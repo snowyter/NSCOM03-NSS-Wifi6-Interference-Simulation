@@ -16,6 +16,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+ENV = dict(os.environ)
 
 # four configurations of the study
 CONFIGS = {
@@ -62,7 +63,7 @@ def run_one(binary, outdir, sim, exp, cfg, args):
     if os.path.exists(raw):
         return "skip"
     cmd = [binary, f"--simTime={sim}", f"--label={cfg}", f"--csv={raw}.part"] + args
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=900, env=ENV)
     if r.returncode != 0 or not os.path.exists(raw + ".part"):
         sys.stderr.write(f"FAILED: {' '.join(cmd)}\n{r.stderr[-400:]}\n")
         return "fail"
@@ -102,6 +103,8 @@ def main():
     if not binary:
         sys.exit("scenario not built: run './ns3 build nss-wifi6' in " + a.ns3)
     binary = binary[0]
+    lib = os.path.join(a.ns3, "build", "lib")
+    ENV["LD_LIBRARY_PATH"] = lib + (":" + ENV["LD_LIBRARY_PATH"] if ENV.get("LD_LIBRARY_PATH") else "")
     os.makedirs(os.path.join(a.out, "raw"), exist_ok=True)
 
     exps = experiments(a.seeds)

@@ -26,6 +26,8 @@
 #include "ns3/uinteger.h"
 #include "ns3/wifi-acknowledgment.h"
 #include "ns3/wifi-net-device.h"
+#include "ns3/wifi-mac-header.h"
+#include "ns3/wifi-phy.h"
 #include "ns3/wifi-psdu.h"
 #include "ns3/wifi-static-setup-helper.h"
 #include "ns3/wifi-tx-vector.h"
@@ -59,6 +61,52 @@ OnPhyTx(WifiConstPsduMap psduMap, WifiTxVector txVector, double /*txPowerW*/)
     }
 }
 
+// Frame trace (only filled with --trace): one row per transmitted PPDU inside a time window
+struct TraceRow
+{
+    int64_t startUs;
+    uint32_t node; // 0 = AP, 1.. = stations
+    std::string type;
+    int64_t durUs;
+    uint32_t bytes;
+    uint32_t mpdus;
+    uint32_t receivers;
+    int mu; // 0 single user, 1 DL multi-user, 2 UL multi-user (trigger based)
+    bool retry;
+};
+
+static std::vector<TraceRow> g_trace;
+static double g_traceFrom = 0;
+static double g_traceTo = 0;
+
+static void
+OnPhyTxTrace(std::string context, WifiConstPsduMap psduMap, WifiTxVector txVector, double /*w*/)
+{
+    double now = Simulator::Now().GetSeconds();
+    if (now < g_traceFrom || now >= g_traceTo || psduMap.empty())
+    {
+        return;
+    }
+    const auto first = psduMap.begin()->second;
+    TraceRow r;
+    r.startUs = Simulator::Now().GetMicroSeconds();
+    auto pos = context.find("/NodeList/");
+    r.node = std::stoul(context.substr(pos + 10));
+    r.type = first->GetHeader(0).GetTypeString();
+    r.durUs = WifiPhy::CalculateTxDuration(psduMap, txVector, WIFI_PHY_BAND_5GHZ).GetMicroSeconds();
+    r.bytes = 0;
+    r.mpdus = 0;
+    for (const auto& [id, psdu] : psduMap)
+    {
+        r.bytes += psdu->GetSize();
+        r.mpdus += psdu->GetNMpdus();
+    }
+    r.receivers = psduMap.size();
+    r.mu = txVector.IsDlMu() ? 1 : (txVector.IsUlMu() ? 2 : 0);
+    r.retry = first->GetHeader(0).IsRetry();
+    g_trace.push_back(r);
+}
+
 int
 main(int argc, char* argv[])
 {
@@ -81,6 +129,9 @@ main(int argc, char* argv[])
     double accessReqMs = 0.0;     // MU scheduler channel-access request interval, ms (0 = off)
     bool perFlow = false;
     std::string csvFile = "";
+    std::string traceFile = "";
+    double traceFrom = 3.0;
+    double traceTo = 3.2;
     std::string label = "";
 
     CommandLine cmd(__FILE__);
@@ -102,6 +153,9 @@ main(int argc, char* argv[])
     cmd.AddValue("hiddenOffset", "Group distance from the AP, hidden topology (m)", hiddenOffset);
     cmd.AddValue("accessReqMs", "OFDMA: AP asks for channel access every X ms so UL triggers can go out with no DL traffic (0 = off)", accessReqMs);
     cmd.AddValue("perFlow", "Print per-flow packets", perFlow);
+    cmd.AddValue("trace", "Write every PPDU sent inside [traceFrom, traceTo) to this CSV", traceFile);
+    cmd.AddValue("traceFrom", "Trace window start, seconds of simulated time", traceFrom);
+    cmd.AddValue("traceTo", "Trace window end, seconds of simulated time", traceTo);
     cmd.AddValue("csv", "Append one result row to this CSV file", csvFile);
     cmd.AddValue("label", "Free-text tag copied into the CSV row", label);
     cmd.Parse(argc, argv);
@@ -277,6 +331,14 @@ main(int argc, char* argv[])
         "/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phys/*/PhyTxPsduBegin",
         MakeCallback(&OnPhyTx));
 
+    if (!traceFile.empty())
+    {
+        g_traceFrom = traceFrom;
+        g_traceTo = traceTo;
+        Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phys/*/PhyTxPsduBegin",
+                        MakeCallback(&OnPhyTxTrace));
+    }
+
     FlowMonitorHelper fmh;
     Ptr<FlowMonitor> fm = fmh.InstallAll();
 
@@ -322,6 +384,18 @@ main(int argc, char* argv[])
         staMbps.push_back(st.rxPackets * payload * 8.0 / simTime / 1e6);
     }
     Simulator::Destroy();
+
+    if (!traceFile.empty())
+    {
+        std::ofstream tr(traceFile);
+        tr << "startUs,node,type,durUs,bytes,mpdus,receivers,mu,retry\n";
+        for (const auto& r : g_trace)
+        {
+            tr << r.startUs << ',' << r.node << ',' << r.type << ',' << r.durUs << ',' << r.bytes
+               << ',' << r.mpdus << ',' << r.receivers << ',' << r.mu << ',' << (r.retry ? 1 : 0)
+               << '\n';
+        }
+    }
 
     auto gp = [&](const Agg& a) { return a.rx * payload * 8.0 / simTime / 1e6; };
     auto dly = [&](const Agg& a) { return a.rx ? a.delaySum / a.rx * 1000.0 : 0.0; };

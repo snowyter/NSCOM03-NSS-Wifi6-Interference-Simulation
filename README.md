@@ -1,49 +1,71 @@
-# NSS Milestone 2 - Dense Wi-Fi 6: CSMA/CA vs RTS/CTS vs OFDMA (ns-3.49)
+# Dense Wi-Fi 6: CSMA/CA vs RTS/CTS vs OFDMA (ns-3 simulation)
 
-Group 3, NSCOM03 S40C: Kryster Knowell Limpin, Justin Doctora, Alessandro Gabriel Rey Encarnacion XIV (De La Salle University). Topic: reducing interference/contention in dense Wi-Fi 6 networks.
-Simulator: ns-3.49 (released Oct 7 2026), 802.11ax, SpectrumWifiPhy, one AP, N stations.
+NSCOM03 S40C, Network Simulation Study, Milestone 2 (code and demo). Group 3: Kryster Knowell Limpin, Justin Doctora, Alessandro Gabriel Rey Encarnacion XIV, De La Salle University.
 
-## What is in this folder
+## What this is
 
-| File | What it does |
-|---|---|
-| `setup_ns3.sh` | One command: downloads ns-3.49 (checksum verified), builds only the modules we need, builds the scenario, runs a smoke test. |
-| `nss-wifi6.cc` | The ns-3 scenario. One run = one configuration, one N, one seed. Appends a CSV row. |
-| `run_sweep.py` | Runs every experiment (4 configs x N x 3 seeds), in parallel, resumable. |
-| `make_plots.py` | Turns `results/*.csv` into 10 figures and `results/summary.txt`. |
-| `demo.py` | Live demo: the four configurations side by side at one N (30-40 s). |
-| `results/` | The data and figures from our run (`raw/` = one CSV per run), plus saved demo output. Viewable on any OS, no build needed. |
+Crowded Wi-Fi gets slow because many stations fight for one channel. Wi-Fi 6 (802.11ax) has two answers:
 
-## The four configurations
+- **RTS/CTS**: a station sends a short "request to send" and waits for the AP's "clear to send" before the long data frame. If two stations collide, only the short RTS is lost instead of a whole data frame.
+- **OFDMA**: the AP splits the 20 MHz channel into small resource units and serves several stations in the same transmission instead of one at a time.
 
-| Name | RTS/CTS | OFDMA |
+Our question: **which of the two reduces the losses in a dense cell, and when?** We simulate it in ns-3.49, the standard open-source network simulator, with one access point and N stations, and compare four setups on identical traffic:
+
+| Setup | RTS/CTS | OFDMA |
 |---|---|---|
 | CSMA/CA only (baseline) | off | off |
-| RTS/CTS | on, every frame (`RtsCtsThreshold=0`) | off |
-| OFDMA | off | DL + UL, round-robin scheduler, up to 9 stations per transmission, BSRP, AP requests channel access every 2 ms |
+| RTS/CTS | on | off |
+| OFDMA | off | on |
 | RTS/CTS + OFDMA | on | on |
 
-Same PHY (SpectrumWifiPhy), same fixed rate, same traffic in all four, so only the MAC differs.
+For each run the simulator reports goodput (useful Mbit/s delivered), delay, packet loss and fairness. It can also dump every frame sent on the air, which is what the dashboard replays.
 
-## Setup (what was actually run)
+## What it does: the dashboard
 
-- 5 GHz, 20 MHz, HE MCS 5 (scaling, payload) or MCS 2 (hidden-node runs), guard interval 1600 ns, fixed rate (no rate adaptation).
-- Stations static, on a ring of radius 5 m around the AP (all in range of each other), static association and block-ack.
-- UDP, constant rate, 0.8 Mbit/s per station per direction, 200 B payload, DL and UL together. 6 s of traffic, 3 seeds (`RngRun` 1-3), mean +/- sd.
-- Metrics from FlowMonitor: aggregate goodput, mean one-way delay (delivered packets only), loss, Jain fairness. Also the share of PPDUs sent as multi-user (a check that OFDMA is really used).
+`dashboard.html` is the prototype. It shows the four setups side by side for one station count:
 
-## Experiments
+- Per setup: goodput, delay, loss, fairness and the share of OFDMA transmissions.
+- A **frame timeline** per setup: what the AP and the stations actually transmit, millisecond by millisecond (data, RTS, CTS, acks, OFDMA triggers), with collisions in red. Press Replay to scroll through a 20 ms capture, hover a frame for its details.
+- An **airtime bar** per setup: how much of the channel went to data, control frames, collisions and idle time.
+- Two scenarios: **Single cell** (everyone hears everyone) and **Hidden nodes** (two groups on opposite sides of the AP that cannot hear each other).
+- Station counts from 5 to 40 (single cell) or 4 to 16 (hidden nodes), plus charts of the full sweeps (up to 60 stations).
+- **Run it live**: type a station count, press *Run all four*, and ns-3 simulates it on your machine in a few seconds. This needs the one-time setup below.
 
-1. **scaling** - N = 5, 10, 20, 30, 40, 60, single cell, all four configs. (72 runs)
-2. **hidden** - two groups of stations on opposite sides of the AP, 38 m each (out of range of each other, both reach the AP), uplink only, baseline vs RTS/CTS. N = 2-16. (30 runs)
-3. **control** - the same stations stacked on ONE side (they hear each other). Compare with 2 to separate the hidden-node effect from plain crowding. (30 runs)
-4. **payload** - N = 30, same offered load, payload 100/200/500/1000 B, baseline vs OFDMA. (24 runs)
+Everything on the page is ns-3 output. Nothing is mocked up. The recorded timelines come from real runs saved in `results/samples/`.
 
-Full sweep: 156 runs, about 19 minutes on 6 parallel jobs (8-core server).
+## Quick start on Windows
 
-## Results (mean of 3 seeds)
+### 1. Recorded results (no install, works right away)
 
-Scaling, single cell, DL+UL, 200 B. Cell shows goodput (Mbit/s) / delay (ms) / loss (%).
+Clone the repo or download it as a ZIP (Code > Download ZIP), unzip, and **double-click `dashboard.html`**. It opens in your browser and everything works except the *Run it live* box.
+
+### 2. Live simulation (one-time setup, about 10 minutes)
+
+ns-3 does not run on plain Windows, so it runs inside WSL2 (a real Ubuntu inside Windows). The repo ships a ready-made simulator, so there is **no compiling**.
+
+1. Open PowerShell **as Administrator** and run `wsl --install -d Ubuntu-24.04`. Reboot if asked, then open "Ubuntu 24.04" from the Start menu once and create a username and password. (Needs Windows 10 2004+ or Windows 11, with virtualization on in the BIOS.)
+2. Back in Windows, open the repo folder and **double-click `demo.bat`**. A window starts the simulator and the browser opens the dashboard at `http://localhost:8000`.
+
+The first run unpacks the simulator (6 MB) into the Ubuntu home folder. After that it starts in a couple of seconds. Keep the `demo.bat` window open while you use the page.
+
+From a terminal instead: `wsl bash run_demo.sh` from the repo folder. To test the setup without opening a browser: `wsl bash run_demo.sh --check`, which should end with `check passed`.
+
+Do this setup once ahead of time, not when you need it.
+
+### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `demo.bat` says WSL is not installed | Do step 2.1 above. |
+| `python3 not found` | In Ubuntu: `sudo apt update && sudo apt install -y python3` |
+| `--check` fails with a library or GLIBC error | The bundled simulator needs Ubuntu 24.04 or newer. Check with `wsl lsb_release -a`, or build from source with `bash setup_ns3.sh` (see the end of this file). |
+| Browser cannot connect to `localhost:8000` | Keep the `demo.bat` window open and try `http://127.0.0.1:8000`. If the port is taken: `wsl env PORT=9000 bash run_demo.sh` and open port 9000. |
+| Live run is slow | Four simulations run in parallel. 10 to 30 stations takes seconds on a desktop-class CPU, 60 stations can take minutes. Use 2 s of traffic. We have not timed it on a laptop. |
+| Page stuck on "Running..." | Reload the page and run again. |
+
+## What we found
+
+Mean of 3 seeds. Single cell, DL + UL traffic, 200 B packets, 20 MHz. Cells show goodput (Mbit/s) / delay (ms) / loss (%).
 
 | N | offered | CSMA/CA only | RTS/CTS | OFDMA | RTS/CTS + OFDMA |
 |---|---|---|---|---|---|
@@ -54,84 +76,77 @@ Scaling, single cell, DL+UL, 200 B. Cell shows goodput (Mbit/s) / delay (ms) / l
 | 40 | 64 | 19.36 / 232 / 69.7 | 31.49 / 149 / 50.6 | 18.32 / 202 / 71.3 | **34.99** / 280 / 45.2 |
 | 60 | 96 | 16.23 / 232 / 83.0 | 36.03 / 162 / 62.3 | 17.03 / 228 / 82.2 | **36.19** / 246 / 62.1 |
 
-Hidden nodes vs same-side control, uplink goodput (Mbit/s):
+Hidden nodes versus the same stations on one side, uplink goodput (Mbit/s):
 
-| N | baseline hidden | baseline same side | RTS/CTS hidden | RTS/CTS same side |
+| N | CSMA/CA hidden | CSMA/CA same side | RTS/CTS hidden | RTS/CTS same side |
 |---|---|---|---|---|
 | 4 | 8.00 | 8.00 | 8.00 | 8.00 |
 | 8 | 8.95 | 13.55 | 15.85 | 15.81 |
 | 12 | 6.49 | 12.88 | 17.44 | 18.82 |
 | 16 | 4.75 | 12.39 | 17.46 | 19.28 |
 
-Payload size, N = 30, goodput (Mbit/s): 100 B 15.62 vs 16.67 (CSMA/CA vs OFDMA); 200 B 20.17 vs 19.38; 500 B 23.68 vs 22.34; 1000 B 26.18 vs 24.35.
+Packet size, N = 30, goodput (Mbit/s), CSMA/CA vs OFDMA: 100 B 15.62 vs 16.67, 200 B 20.17 vs 19.38, 500 B 23.68 vs 22.34, 1000 B 26.18 vs 24.35.
 
-## What the data says
+- **RTS/CTS matters most once the cell is crowded.** At 60 stations it more than doubles goodput over plain CSMA/CA (36.0 vs 16.2) and cuts loss from 83% to 62%.
+- **Hidden nodes break plain CSMA/CA.** At 16 stations it falls to 4.75 Mbit/s against 12.39 for the same stations on one side. RTS/CTS brings the hidden case back to 17.46.
+- **OFDMA alone did not raise goodput here.** It is 0.8 to 2.5 Mbit/s below CSMA/CA at 20 to 40 stations (the 30-station gap is inside the seed spread) and level at 60.
+- **RTS/CTS + OFDMA was best at 20 to 40 stations** (+13%, +23%, +11% over RTS/CTS alone) and tied at 60, where the channel is saturated anyway.
+- **Packet size:** OFDMA only came out ahead at the smallest payload (100 B, about 2 sd, 3 seeds).
+- Our paper expected OFDMA to increase throughput and reduce delay as stations grow. That is **only partly supported**: it holds for OFDMA combined with RTS/CTS and under load, not for OFDMA by itself.
 
-- **RTS/CTS is the big lever once the cell is crowded.** At N=60 it more than doubles goodput over CSMA/CA only (36.0 vs 16.2 Mbit/s) and cuts loss from 83 % to 62 %. This holds even when every station hears every other, because a collided RTS wastes far less airtime than a collided data frame.
-- **Hidden nodes make plain CSMA/CA collapse.** At N=16 the baseline falls to 4.75 Mbit/s versus 12.39 for the same stations on one side. RTS/CTS brings the hidden case back to 17.46 (about 91 % of the same-side RTS figure).
-- **OFDMA alone did not raise goodput in our setup.** It is 0.8-2.5 Mbit/s below CSMA/CA at N = 20-40 and level at N = 60. The gap is clear at N = 20 and 40 but inside the seed spread at N = 30. It does cut delay a little at N >= 20 (for example 210 vs 241 ms at N=30) but raises it at small N.
-- **OFDMA plus RTS/CTS gave the best goodput at N = 20-40**, +13 %, +23 %, +11 % over RTS/CTS alone, and tied at N = 60 where the channel is saturated either way. Its delay is better at N=20 (85 vs 353 ms) and worse at N = 30-40.
-- **Packet size:** OFDMA only came out ahead at the smallest payload (100 B, +1.05 Mbit/s, roughly 2 sd, only 3 seeds) and fell behind as packets grew.
-- The paper's expected outcome ("OFDMA increases throughput and reduces delay as the number of stations increases") is **only partly supported**: OFDMA helps when combined with RTS/CTS and under load, not on its own. The paper should say so.
+## Limits
 
-## Limits and things not verified
+- Why OFDMA alone underperforms is a hypothesis, not tested: it still wins the channel by contention, and trigger-based uplink adds overhead (buffer status, trigger, multi-station block ack) that costs time for small frames. We did not isolate it.
+- The cell is overloaded from 20 stations up (offered 32 to 96 Mbit/s against about 36 Mbit/s of capacity), so loss and delay describe a saturated cell. Delay is averaged over delivered packets only, so read it together with loss.
+- "Hidden" is shown by the control comparison (same stations on one side). We did not log carrier-sense range directly.
+- One AP, UDP only, fixed rate (no rate adaptation), 20 MHz, static stations, association set up directly, no neighbouring networks, no TCP.
+- OFDMA setting `accessReqMs=2`: without it the AP never starts uplink OFDMA when downlink is idle (an uplink-only run showed 0% multi-user frames). Other values were not swept.
+- The frame timelines show a 20 ms slice (seed 1, starting 2 s into the run). They illustrate behaviour, the numbers come from the whole runs.
+- Tested on an Ubuntu server and in a clean Ubuntu 24.04 container (bundled simulator, python3 only), and the dashboard in Chromium on Linux. **Not yet run on a real Windows laptop, and `demo.bat` itself is untested.** Not run on the phone either.
 
-- Why OFDMA alone underperforms is a hypothesis, not tested: TXOP acquisition still goes through contention and collides, and trigger-based UL adds overhead (BSRP, trigger, multi-STA block ack) for small frames. We did not isolate it.
-- The cell is overloaded for N >= 20 (offered 32-96 Mbit/s against about 36 Mbit/s of capacity), so loss and delay describe a saturated cell. Delay is averaged over delivered packets only, so read it together with loss.
-- "Hidden" is shown by the control comparison. Carrier-sense range was not logged directly.
-- One AP, UDP only, fixed MCS, 20 MHz, static stations, no mobility, no rate adaptation, no TCP, no interference from neighbouring BSSs. Association is static (set up directly), so association storms are not modelled.
-- The OFDMA setting `accessReqMs=2` was chosen because without it the AP never starts UL OFDMA when downlink is idle (an uplink-only run showed 0 % multi-user PPDUs). Other values were not swept.
-- Built and run on an Ubuntu server. `setup_ns3.sh` was also run end to end in a clean Ubuntu 24.04 container (apt packages only, 4 jobs): download, checksum, build, smoke test, then `demo.py --n 30` gave the same numbers as the server build. It has not been run on real Windows/WSL2 or on the phone.
+## Notes for the demo
 
-## Reproduce
+- Open the dashboard on Single cell, 30 stations. The cards already hold the comparison. Point at the timelines (a collided RTS is short, a collided data frame is long), then flip to Hidden nodes at 16 stations.
+- If asked about the live box, run 10 or 20 stations with 2 s of traffic.
+- If the live setup misbehaves, `dashboard.html` on its own still shows everything recorded, and `results/` has the figures and CSVs.
+- When asked about OFDMA, say plainly that alone it did not beat CSMA/CA here and helped only with RTS/CTS, then point to Limits.
 
-ns-3 builds on Linux and macOS. On Windows it runs inside WSL2 (Ubuntu), see the next section.
-You need g++, cmake >= 3.25, ninja and python3. On Ubuntu 24.04 everything comes from apt:
+## How it is built
 
-    sudo apt update
-    sudo apt install -y git g++ cmake ninja-build python3 curl ca-certificates bzip2 python3-pandas python3-matplotlib
+| File | What it does |
+|---|---|
+| `dashboard.html` | The prototype. Self-contained, opens from the file system. |
+| `demo.bat`, `run_demo.sh` | Start the live dashboard on Windows (through WSL) or Linux. |
+| `app.py` | Small local web server (standard library only) that runs the simulator when the page asks. Listens on 127.0.0.1 only. |
+| `simlib.py` | Finds the simulator, runs one configuration, parses its output. |
+| `nss-wifi6.cc` | The ns-3 scenario: topology, traffic, the four configurations, FlowMonitor metrics, optional frame trace. |
+| `prebuilt/` | The compiled simulator for Linux x86_64 (6 MB, built from `nss-wifi6.cc` on ns-3.49 without CPU-specific flags, SHA-256 included). |
+| `setup_ns3.sh` | Alternative: download and build ns-3.49 from source (checksum verified), about 12 min on 8 cores. |
+| `demo.py` | Text-mode demo: the four setups in a table. `python3 demo.py --n 30` |
+| `run_sweep.py`, `make_plots.py` | Re-run all 156 experiments (about 19 min on 8 cores) and rebuild `results/figures`. |
+| `make_dashboard.py`, `dashboard.template.html` | Rebuild `dashboard.html` from the saved runs. Not needed to give the demo. |
+| `results/` | Sweep CSVs (`raw/` is one file per run), 10 figures, `summary.txt`, saved demo output, `samples/` (the recorded runs behind the dashboard). |
 
-    git clone https://github.com/snowyter/NSCOM03-NSS-Wifi6-Interference-Simulation.git nss-wifi6 && cd nss-wifi6
-    ./setup_ns3.sh                       # downloads + builds ns-3.49 into ~/ns-3.49, then a smoke test
+Experiments: **scaling** (N = 5 to 60, four setups, 72 runs), **hidden** (two groups out of mutual range, 30 runs), **control** (the same stations on one side, 30 runs), **payload** (N = 30, 100 to 1000 B, 24 runs). Three seeds per point, 6 s of traffic each. Runs are deterministic: the same options and seed give the same numbers.
 
-    python3 demo.py --ns3 ~/ns-3.49 --n 30         # live demo, about 40 s
-    python3 demo.py --ns3 ~/ns-3.49 --n 12 --topology hidden
-    python3 run_sweep.py --ns3 ~/ns-3.49           # full sweep, about 19 min on 8 cores
-    python3 make_plots.py                          # rebuilds results/figures
+Setup used: 5 GHz, 20 MHz, HE MCS 5 (scaling, payload) or MCS 2 (hidden-node runs), guard interval 1600 ns, fixed rate, stations on a 5 m ring around the AP (single cell) or 38 m either side of it (hidden), UDP at 0.8 Mbit/s per station per direction with 200 B packets (single cell) or 2 Mbit/s uplink with 512 B packets (hidden).
 
-One run by hand (from the ns-3 folder):
+One run by hand, from a built ns-3 folder:
 
     ./ns3 run "nss-wifi6 --nStations=30 --rts=1 --ofdma=1 --accessReqMs=2 --payload=200 --perStaMbps=0.8 --mcs=5 --direction=both"
 
-Every option: `./ns3 run "nss-wifi6 --PrintHelp"`. Runs are deterministic: the same options and seed give the same numbers.
+Every option: `./ns3 run "nss-wifi6 --PrintHelp"`.
 
-## Running it from a Windows laptop
+### Building from source instead of using the bundled simulator
 
-Two separate things, and only the second needs setup:
-
-1. **Showing the results needs nothing but Windows.** Download the repo as a ZIP (Code > Download ZIP) or clone it. Open
-   `results/figures/*.png`, `results/summary.txt`, `results/*.csv` and this README directly. `results/demo_N30_single.txt` and
-   `results/demo_N12_hidden.txt` are saved outputs of `demo.py`.
-2. **Running the simulation live needs Linux.** ns-3 does not build on plain Windows, so use WSL2 (a real Ubuntu inside Windows, from Microsoft).
-
-One-time WSL2 setup (Windows 10 2004+ or Windows 11, virtualization enabled in BIOS):
-
-    # PowerShell as Administrator
-    wsl --install -d Ubuntu-24.04
-    # reboot when asked, then open "Ubuntu 24.04" from the Start menu and create a username + password
-
-Then inside the Ubuntu window:
+On Linux or WSL (Ubuntu 24.04). `setup_ns3.sh` builds into `~/ns-3.49`, and the dashboard and demo scripts prefer that build when it exists.
 
     sudo apt update
     sudo apt install -y git g++ cmake ninja-build python3 curl ca-certificates bzip2 python3-pandas python3-matplotlib
-    cd ~                                   # stay in the Linux home, NOT /mnt/c/... (the Windows disk is very slow for builds)
-    git clone https://github.com/snowyter/NSCOM03-NSS-Wifi6-Interference-Simulation.git nss-wifi6 && cd nss-wifi6
-    ./setup_ns3.sh                         # the long step: build it BEFORE the demo day
-    python3 demo.py --ns3 ~/ns-3.49 --n 30
+    git clone https://github.com/snowyter/NSCOM03-NSS-Wifi6-Interference-Simulation.git
+    cd NSCOM03-NSS-Wifi6-Interference-Simulation
+    bash setup_ns3.sh
+    python3 demo.py --n 30            # table in the terminal
+    python3 app.py                    # dashboard at http://localhost:8000
 
-Tips:
-- To open the figures in Windows from Ubuntu: `explorer.exe results/figures` (or browse to `\\wsl$\Ubuntu-24.04\home\<you>\nss-wifi6`).
-- WSL2 gets half of the laptop's RAM by default. 8 GB of RAM is enough because `setup_ns3.sh` picks the number of parallel jobs from free memory. If the build is killed, run `JOBS=2 ./setup_ns3.sh`.
-- Build time depends on the laptop's core count. It took about 12 minutes on an 8-thread server. Expect longer on a laptop; we have not measured it.
-- Do the build once, ahead of time, and leave it. In front of the professor you only run `demo.py`, which takes under a minute.
-- If the laptop is not usable, `demo.py` can be run on the group server from any laptop over SSH, or shown from the saved output and figures above.
+Keep the repo and the build inside the Linux home (`~`), not under `/mnt/c/...`, where builds are very slow.

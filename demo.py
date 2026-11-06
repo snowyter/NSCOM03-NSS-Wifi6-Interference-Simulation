@@ -5,13 +5,15 @@ Usage:  python3 demo.py [--ns3 ~/ns-3.49] [--n 30] [--sim 4] [--topology single|
 Takes about 30-60 s for N=30 (the four runs go in parallel).
 """
 import argparse
-import glob
 import os
 import re
 import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import simlib
 
 CONFIGS = [
     ("CSMA/CA only", ["--rts=0", "--ofdma=0"]),
@@ -21,16 +23,17 @@ CONFIGS = [
 ]
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--ns3", default=os.path.expanduser("~/ns-3.49"))
+ap.add_argument("--ns3", default=simlib.default_ns3())
 ap.add_argument("--n", type=int, default=30)
 ap.add_argument("--sim", type=float, default=4)
 ap.add_argument("--topology", default="single", choices=["single", "hidden"])
 a = ap.parse_args()
 
-bins = [b for b in glob.glob(os.path.join(a.ns3, "build", "scratch", "ns3.*-nss-wifi6*"))
-        if os.path.isfile(b) and os.access(b, os.X_OK)]
-if not bins:
-    sys.exit("not built: run './ns3 build nss-wifi6' in " + a.ns3)
+try:
+    binary = simlib.find_binary(a.ns3)
+except FileNotFoundError as e:
+    sys.exit(str(e))
+env = simlib.child_env(a.ns3)
 
 if a.topology == "single":
     scen = ["--topology=single", "--direction=both", "--payload=200", "--perStaMbps=0.8", "--mcs=5"]
@@ -40,8 +43,8 @@ else:
 
 def run(item):
     name, args = item
-    out = subprocess.run([bins[0], f"--nStations={a.n}", f"--simTime={a.sim}"] + scen + args,
-                         capture_output=True, text=True, timeout=600).stdout
+    out = subprocess.run([binary, f"--nStations={a.n}", f"--simTime={a.sim}"] + scen + args,
+                         capture_output=True, text=True, timeout=600, env=env).stdout
     g = lambda pat: float(re.search(pat, out).group(1))
     return (name, g(r"goodput ([\d.]+) Mbps"), g(r"mean delay ([\d.]+) ms"), g(r"loss ([\d.]+) %"),
             g(r"Jain ([\d.]+)"), g(r"([\d.]+) % multi-user"))
