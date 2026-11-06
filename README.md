@@ -24,6 +24,8 @@ For each run the simulator reports goodput (useful Mbit/s delivered), delay, pac
 
 `dashboard.html` is the prototype. It shows the four setups side by side for one station count:
 
+![Dashboard, single cell, 30 stations](docs/dashboard.png)
+
 - Per setup: goodput, delay, loss, fairness and the share of OFDMA transmissions.
 - A **frame timeline** per setup: what the AP and the stations actually transmit, millisecond by millisecond (data, RTS, CTS, acks, OFDMA triggers), with collisions in red. Press Replay to scroll through a 20 ms capture, hover a frame for its details.
 - An **airtime bar** per setup: how much of the channel went to data, control frames, collisions and idle time.
