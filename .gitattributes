@@ -1,0 +1,4 @@
+# keep LF in the scripts even when Git for Windows has autocrlf on, or bash in WSL fails with "\r: command not found"
+*.sh text eol=lf
+*.py text eol=lf
+*.cc text eol=lf

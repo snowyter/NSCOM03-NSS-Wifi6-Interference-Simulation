@@ -1,0 +1,9 @@
+single cell, N=30, 4 s of traffic, 4 configs in parallel ...
+
+config             goodput Mb/s  delay ms  loss %   Jain  MU PPDU %
+CSMA/CA only              19.31     216.4    59.6   0.59        0.0
+RTS/CTS                   29.28     206.2    38.8   0.74        0.0
+OFDMA                     21.52     275.5    55.0   0.70       45.1
+RTS/CTS + OFDMA           35.79     312.9    25.2   0.93       42.6
+
+(34 s)

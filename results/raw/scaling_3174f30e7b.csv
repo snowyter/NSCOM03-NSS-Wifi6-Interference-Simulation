@@ -1,0 +1,2 @@
+label,topology,direction,nStations,rts,ofdma,ulOfdma,accessReqMs,mcs,width,payload,perStaMbps,simTime,seed,offeredMbps,goodputMbps,dlMbps,ulMbps,meanDelayMs,dlDelayMs,ulDelayMs,lossPct,jain,txPkts,rxPkts,ppdus,dlMuPpdus,ulMuPpdus,muPct,wallSec
+ofdma,single,both,60,0,1,1,2.0000,5,20,200,0.8000,6.0000,1,96.0000,17.7395,0.2779,17.4616,227.6827,477.4549,223.7080,81.4316,0.4506,358260,66523,24073,30,9883,41.1789,129.1862

@@ -1,0 +1,78 @@
+=== scaling (single cell, DL+UL, 200 B) ===
+                     goodputMbps  meanDelayMs  lossPct  jain  muPct
+nStations label                                                    
+5         baseline          8.00         1.65     0.00  1.00   0.00
+          ofdma             8.00         2.48     0.00  1.00  30.52
+          rts               8.00         2.51     0.00  1.00   0.00
+          rts+ofdma         8.00         2.61     0.00  1.00  22.04
+10        baseline         15.99        17.81     0.00  1.00   0.00
+          ofdma            15.99        27.72     0.02  1.00  39.64
+          rts              15.99        16.85     0.00  1.00   0.00
+          rts+ofdma        15.99         7.06     0.00  1.00  34.69
+20        baseline         22.73       381.03    28.86  0.93   0.00
+          ofdma            20.22       314.06    36.73  0.81  34.92
+          rts              26.21       353.17    17.98  0.96   0.00
+          rts+ofdma        29.67        84.80     7.15  0.99  39.57
+30        baseline         20.17       240.80    57.87  0.66   0.00
+          ofdma            19.38       210.29    59.53  0.61  37.48
+          rts              27.59       182.18    42.39  0.67   0.00
+          rts+ofdma        34.04       314.39    28.92  0.91  37.92
+40        baseline         19.36       231.63    69.65  0.58   0.00
+          ofdma            18.32       201.92    71.29  0.50  40.80
+          rts              31.49       149.45    50.64  0.58   0.00
+          rts+ofdma        34.99       280.17    45.15  0.81  38.22
+60        baseline         16.23       231.95    83.01  0.45   0.00
+          ofdma            17.03       228.31    82.18  0.45  40.45
+          rts              36.03       162.35    62.28  0.51   0.00
+          rts+ofdma        36.19       245.60    62.12  0.67  39.23
+
+=== hidden nodes (two groups out of mutual range, UL) ===
+                    goodputMbps  meanDelayMs  lossPct  jain
+nStations label                                            
+2         baseline         4.00         0.27     0.00  1.00
+          rts              4.00         0.37     0.00  1.00
+4         baseline         8.00         0.46     0.00  1.00
+          rts              8.00         0.84     0.00  1.00
+8         baseline         8.95       321.28    44.06  0.93
+          rts             15.85       111.82     0.92  1.00
+12        baseline         6.49       480.88    72.94  0.84
+          rts             17.44       227.88    27.28  0.98
+16        baseline         4.75       560.00    85.15  0.87
+          rts             17.46       288.11    45.39  0.96
+
+=== hidden-node control (hidden vs same-side, UL) ===
+                              goodputMbps  meanDelayMs  lossPct
+nStations topo      label                                      
+2         hidden    baseline         4.00         0.27     0.00
+                    rts              4.00         0.37     0.00
+          same side baseline         4.00         0.27     0.00
+                    rts              4.00         0.37     0.00
+4         hidden    baseline         8.00         0.46     0.00
+                    rts              8.00         0.84     0.00
+          same side baseline         8.00         0.46     0.00
+                    rts              8.00         0.62     0.00
+8         hidden    baseline         8.95       321.28    44.06
+                    rts             15.85       111.82     0.92
+          same side baseline        13.55       185.24    15.27
+                    rts             15.81        44.15     1.14
+12        hidden    baseline         6.49       480.88    72.94
+                    rts             17.44       227.88    27.28
+          same side baseline        12.88       288.83    46.29
+                    rts             18.82       221.68    21.51
+16        hidden    baseline         4.75       560.00    85.15
+                    rts             17.46       288.11    45.39
+          same side baseline        12.39       329.20    61.22
+                    rts             19.28       299.01    39.68
+
+=== payload size (N=30) ===
+                  goodputMbps  meanDelayMs  lossPct  jain  muPct
+payload label                                                   
+100     baseline        15.62       266.90    67.37  0.50   0.00
+        ofdma           16.67       269.26    65.18  0.54  47.22
+200     baseline        20.17       240.80    57.87  0.66   0.00
+        ofdma           19.38       210.29    59.53  0.61  37.48
+500     baseline        23.68       306.89    50.56  0.75   0.00
+        ofdma           22.34       206.51    53.35  0.59  34.53
+1000    baseline        26.18       188.21    45.37  0.77   0.00
+        ofdma           24.35       160.10    49.20  0.62  34.79
+
