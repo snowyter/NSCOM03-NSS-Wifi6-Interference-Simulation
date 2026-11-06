@@ -91,7 +91,7 @@ You need g++, cmake >= 3.25, ninja and python3. On Ubuntu 24.04 everything comes
     sudo apt update
     sudo apt install -y git g++ cmake ninja-build python3 curl ca-certificates bzip2 python3-pandas python3-matplotlib
 
-    git clone <this repo> nss-wifi6 && cd nss-wifi6
+    git clone https://github.com/snowyter/NSCOM03-NSS-Wifi6-Interference-Simulation.git nss-wifi6 && cd nss-wifi6
     ./setup_ns3.sh                       # downloads + builds ns-3.49 into ~/ns-3.49, then a smoke test
 
     python3 demo.py --ns3 ~/ns-3.49 --n 30         # live demo, about 40 s
@@ -125,7 +125,7 @@ Then inside the Ubuntu window:
     sudo apt update
     sudo apt install -y git g++ cmake ninja-build python3 curl ca-certificates bzip2 python3-pandas python3-matplotlib
     cd ~                                   # stay in the Linux home, NOT /mnt/c/... (the Windows disk is very slow for builds)
-    git clone <this repo> nss-wifi6 && cd nss-wifi6
+    git clone https://github.com/snowyter/NSCOM03-NSS-Wifi6-Interference-Simulation.git nss-wifi6 && cd nss-wifi6
     ./setup_ns3.sh                         # the long step: build it BEFORE the demo day
     python3 demo.py --ns3 ~/ns-3.49 --n 30
 
